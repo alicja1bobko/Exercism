@@ -2,6 +2,7 @@ package exercism;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -13,7 +14,7 @@ public class Pangram {
         Pattern pattern = Pattern.compile("[a-zA-Z]+");
         pattern.matcher(input.toUpperCase())
                 .results()
-                .map(matchResult -> matchResult.group())
+                .map(MatchResult::group)
                 .collect(Collectors.joining())
                 .chars()
                 .forEach(character -> lettersSet.add((char) character));
