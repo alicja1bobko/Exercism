@@ -26,7 +26,7 @@ class HighScores {
 
     List<Integer> personalTopThree() {
         List<Integer> sortedList = new ArrayList<>(this.highScores);
-        Collections.sort(sortedList, Collections.reverseOrder());
+        sortedList.sort(Collections.reverseOrder());
         return sortedList.stream().limit(3).toList();
     }
 
