@@ -1,52 +1,76 @@
 package exercism;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 public class BankAccount {
-    private int balance = 0;
-    private boolean isAccountOpen = false;
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    private final AtomicBoolean isOpen = new AtomicBoolean();
+
+    private int amount = 0;
 
     public void open() {
-        isAccountOpen = true;
-    }
-
-    public int getBalance() throws BankAccountActionInvalidException {
-        checkIfAccountIsNotClosed();
-        return this.balance;
-    }
-
-    public synchronized void deposit(int amount) throws BankAccountActionInvalidException {
-        checkIfAccountIsNotClosed();
-        checkIsAmountIsPositive(amount);
-        this.balance += amount;
-    }
-
-    public synchronized void withdraw(int amount) throws BankAccountActionInvalidException {
-        checkIfAccountIsNotClosed();
-        checkIfAccountIsNotEmpty();
-        checkIsAmountIsPositive(amount);
-        checkIfBalanceIsGreaterThenAmountToWithdraw(amount);
-
-        this.balance -= amount;
+        isOpen.set(true);
     }
 
     public void close() {
-        isAccountOpen = false;
+        isOpen.set(false);
     }
 
-    private void checkIfAccountIsNotClosed() throws BankAccountActionInvalidException {
-        if (!isAccountOpen) throw new BankAccountActionInvalidException("Account closed");
+    public int getBalance() throws BankAccountActionInvalidException {
+        lock.readLock().lock();
+        try {
+            if (!isOpen.get()) {
+                throw new BankAccountActionInvalidException("Account closed");
+            }
+
+            return amount;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
-    private void checkIsAmountIsPositive(int amount) throws BankAccountActionInvalidException {
-        if (amount < 0) throw new BankAccountActionInvalidException("Cannot deposit or withdraw negative amount");
+    public void deposit(final int depositAmount) throws BankAccountActionInvalidException {
+        lock.writeLock().lock();
+        try {
+            if (!isOpen.get()) {
+                throw new BankAccountActionInvalidException("Account closed");
+            }
+
+            if (depositAmount < 0) {
+                throw new BankAccountActionInvalidException("Cannot deposit or withdraw negative amount");
+            }
+
+            amount += depositAmount;
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
-    private void checkIfBalanceIsGreaterThenAmountToWithdraw(int amount) throws BankAccountActionInvalidException {
-        if (amount > balance)
-            throw new BankAccountActionInvalidException("Cannot withdraw more money than is currently in the account");
-    }
+    public void withdraw(final int withdrawAmount) throws BankAccountActionInvalidException {
+        lock.writeLock().lock();
+        try {
+            if (!isOpen.get()) {
+                throw new BankAccountActionInvalidException("Account closed");
+            }
 
-    private void checkIfAccountIsNotEmpty() throws BankAccountActionInvalidException {
-        if (balance == 0) throw new BankAccountActionInvalidException("Cannot withdraw money from an empty account");
-    }
+            if (amount == 0) {
+                throw new BankAccountActionInvalidException("Cannot withdraw money from an empty account");
+            }
 
+            if (withdrawAmount > amount) {
+                throw new BankAccountActionInvalidException(
+                        "Cannot withdraw more money than is currently in the account");
+            }
+
+            if (withdrawAmount < 0) {
+                throw new BankAccountActionInvalidException("Cannot deposit or withdraw negative amount");
+            }
+
+            amount -= withdrawAmount;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
 }
